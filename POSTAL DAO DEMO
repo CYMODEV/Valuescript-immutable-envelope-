@@ -1,0 +1,2060 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Stamp, Mail, PenTool, Shield, Box, LayoutGrid, 
+  Send, Lock, Unlock, CheckCircle, Search, CreditCard, 
+  Fingerprint, ChevronRight, History, FileText, X,
+  ArrowLeft, Zap, Globe, AlertCircle, RefreshCw, Truck,
+  Sparkles, Wand2, Loader2, Image as ImageIcon,
+  Terminal, AlertTriangle, FileCheck, Undo2, BookOpen, MapPin,
+  Crosshair, Navigation, Menu, Wallet, QrCode, MoreHorizontal,
+  Scale, MessageSquareQuote, Briefcase, User, Building, Receipt,
+  ScanLine, Eye, Stethoscope, Landmark, FileKey, Flame, Database,
+  Link as LinkIcon, Server, ShieldCheck, Milestone, Siren,
+  Languages, MessageSquareReply, ArrowUpRight, ArrowDownLeft, Plus,
+  Coins, FilePlus2, TrendingUp, DollarSign, Layers, Feather, Binary,
+  Activity, BrainCircuit, LogOut, Monitor, Smartphone, Grab
+} from 'lucide-react';
+
+// --- GEMINI API HELPERS ---
+const apiKey = ""; // Injected at runtime
+
+// Helper to strip markdown code blocks from JSON responses
+const cleanJson = (text) => {
+  if (!text) return text;
+  return text.replace(/```json\n?|\n?```/g, "").trim();
+};
+
+const generateText = async (prompt, docType) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const typeContext = docType ? `Context: This is a ${docType} document requiring secure custody language.` : "";
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Write a short, professional message (under 100 words) for a letter. ${typeContext} Prompt: ${prompt}` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate text.";
+  } catch (e) {
+    console.error("Gemini Text Error:", e);
+    return `[Mock AI Draft]: Regarding your recent inquiry about ${prompt}, we acknowledge receipt and will process accordingly.`;
+  }
+};
+
+const formalizeText = async (draft, docType) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    let tone = 'Professional';
+    if (docType === 'Legal') tone = 'Strictly legal, citing generic statutes, creating a paper trail';
+    if (docType === 'Financial') tone = 'Financial compliance, audit-ready, precise';
+    if (docType === 'Medical') tone = 'HIPAA-compliant, private, clinical';
+    if (docType === 'Secret') tone = 'Coded, minimal, deniable';
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Rewrite the following text. Tone: ${tone}. Keep it under 150 words. Text: "${draft}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || draft;
+  } catch (e) {
+    console.error("Gemini Formalizer Error:", e);
+    return `[Formalized]: ${draft} (simulated refinement)`;
+  }
+};
+
+const rewriteStyleAi = async (text, style) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Rewrite the following text in the style of: ${style}. Maintain the core meaning but drastically change the vocabulary and rhythm to match the aesthetic. Text: "${text}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || text;
+  } catch (e) {
+    console.error("Gemini Style Error:", e);
+    return `[${style} Style]: ${text}`;
+  }
+};
+
+const generateClauseAi = async (requirement, docType) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Draft a legal/business clause block for a ${docType || 'General'} document regarding: "${requirement}". Keep it legally sound, standard, and concise (under 50 words).` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate clause.";
+  } catch (e) {
+    console.error("Gemini Clause Error:", e);
+    return "SECTION 1.1: FORCE MAJEURE. Neither party shall be liable for failure to perform due to unforeseen events beyond control.";
+  }
+};
+
+const generateAppraisalAi = async (stampTitle, artist, price) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Act as a high-end art appraiser. Provide a short, speculative market analysis (2 sentences) for a digital stamp titled '${stampTitle}' by '${artist}' listed at $${price}. Mention fictional market trends or artist hype. Tone: Financial, Sophisticated.` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Market data unavailable.";
+  } catch (e) {
+    console.error("Gemini Appraisal Error:", e);
+    return "Market indicators suggest strong hold sentiment for this artist despite volatility.";
+  }
+};
+
+const translateTextAi = async (text, targetLang, docType) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Translate the following text into ${targetLang}. CRITICAL: You must preserve the '${docType || 'Professional'}' tone and legal/technical nuances. Do not simplify the language. Text: "${text}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || text;
+  } catch (e) {
+    console.error("Gemini Translation Error:", e);
+    return `[${targetLang} Translation]: ${text}`;
+  }
+};
+
+const generateReplyAi = async (incomingText, category) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Draft a formal response to the following incoming letter. The incoming letter is categorized as ${category}. The response should be polite, acknowledge receipt, and be legally prudent (non-committal regarding liability). Keep it under 100 words. Incoming Letter: "${incomingText}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Error generating reply.";
+  } catch (e) {
+    console.error("Gemini Reply Error:", e);
+    return "Receipt acknowledged. We are reviewing the contents.";
+  }
+};
+
+const analyzeRiskAi = async (text) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Analyze this text for legal liabilities, vague language, or security risks (PII). Return a JSON object with: 'riskScore' (0-100, where 100 is high risk), 'issues' (array of short string warnings). If safe, return score 0. Text: "${text}"` }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        })
+      }
+    );
+    const data = await response.json();
+    return JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
+  } catch (e) {
+    console.error("Gemini Risk Error:", e);
+    return { riskScore: 0, issues: [] };
+  }
+};
+
+const analyzeSubtextAi = async (text) => {
+  try {
+    if (!apiKey) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        return "The sender is asserting authority but leaving room for negotiation. They likely do not want to go to court.";
+    }
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Analyze the psychological subtext of this letter. What is the sender implicitly saying or trying to hide? Return a short, 1-sentence insight. Text: "${text}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "No subtext detected.";
+  } catch (e) {
+    console.error("Gemini Subtext Error:", e);
+    return "Subtext analysis unavailable.";
+  }
+};
+
+const analyzeVibeAi = async (text) => {
+  try {
+    if (!apiKey) {
+         await new Promise(resolve => setTimeout(resolve, 800));
+         return "Formal, Authoritative, Urgent";
+    }
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Analyze the emotional tone and 'vibe' of this text. Return exactly 3 adjectives separated by commas (e.g. Formal, Urgent, Cold). Text: "${text}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Neutral";
+  } catch (e) {
+    console.error("Gemini Vibe Error:", e);
+    return "Neutral, Professional";
+  }
+};
+
+const enhancePromptAi = async (draft) => {
+  try {
+    if (!apiKey) throw new Error("No API Key provided - using mock enhancement");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Expand this short concept into a highly detailed, artistic image prompt for a postage stamp. Include style (e.g. noir, art deco), lighting, and texture details. Keep it under 40 words. Concept: "${draft}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || draft;
+  } catch (e) {
+    console.warn("Gemini Enhance Error (Simulating):", e);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return `High-fidelity vector art of ${draft}, dramatic noir lighting, cyber-physical aesthetic, detailed filigree borders.`;
+  }
+};
+
+const parseAddressAi = async (rawInput) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Extract and format the address from this raw text into a clean 3-line format (Name, Street, City/State/Zip). Remove any phone numbers or emails. Text: "${rawInput}"` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || rawInput;
+  } catch (e) {
+    console.error("Gemini Address Error:", e);
+    return rawInput;
+  }
+};
+
+const analyzeIncomingMail = async (ocrText) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Analyze this OCR text from a physical letter. Return a JSON object with keys: 'summary' (max 15 words), 'urgency' (High, Medium, Low), 'category' (Legal, Bill, Personal, Spam). Text: "${ocrText}"` }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        })
+      }
+    );
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return JSON.parse(cleanJson(rawText));
+  } catch (e) {
+    console.error("Gemini Mailroom Error:", e);
+    // Mock analysis for fallback
+    return { summary: "Analysis unavailable (Offline)", urgency: "Medium", category: "Legal" };
+  }
+};
+
+const reverseGeocodeAi = async (lat, lng) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Act as a Reverse Geocoding Oracle. Convert these GPS coordinates: ${lat}, ${lng} into the nearest valid USPS street address. Return ONLY the address string (Street, City, State ZIP). If it's in the ocean or wild, return 'Sovereign Territory (No Postal Service)'.` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Unknown Location";
+  } catch (e) {
+    console.error("Gemini Geocode Error:", e);
+    return "123 Sovereign Way, Digital City, WEB3";
+  }
+};
+
+const generateStampImage = async (prompt) => {
+  try {
+    if (!apiKey) throw new Error("No API Key provided - using mock generation");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt: `A high quality postage stamp design of ${prompt}, vector art style, centered, white border, vibrant colors, detailed, noir aesthetic` }],
+          parameters: { sampleCount: 1 }
+        })
+      }
+    );
+    const data = await response.json();
+    const base64 = data.predictions?.[0]?.bytesBase64Encoded;
+    if (base64) return `data:image/png;base64,${base64}`;
+    throw new Error("No image data returned");
+  } catch (e) {
+    console.warn("Imagen Error (Simulating):", e);
+    await new Promise(resolve => setTimeout(resolve, 1500)); 
+    return `https://placehold.co/400x500/1e293b/fbbf24?text=${encodeURIComponent(prompt.substring(0,20))}`;
+  }
+};
+
+const generateLore = async (title, artist) => {
+  try {
+    if (!apiKey) throw new Error("No API Key");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `Write a 40-word 'Curator Note' describing the artistic significance, rarity, and imagined provenance of a digital philatelic stamp titled '${title}' by artist '${artist}'. Tone: Sophisticated, Museum Catalog.` }] }]
+        })
+      }
+    );
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Provenance data unavailable.";
+  } catch (e) {
+    console.error("Gemini Curator Error:", e);
+    return "The archives are silent on this piece.";
+  }
+};
+
+// --- MOCK DATA & CONFIG ---
+const INITIAL_BALANCE = 250.00;
+const SUB_PRICE = 29.00;
+
+const INITIAL_MARKET = [
+  { id: 101, title: "Blue Jay Series", artist: "Sarah Aviary", price: 15.00, supply: 1000, sold: 450, color: "bg-cyan-900/40", image: "🐦", tier: "basic" },
+  { id: 102, title: "Golden Era", artist: "Retro Works", price: 25.00, supply: 500, sold: 120, color: "bg-amber-900/40", image: "🏛️", tier: "basic" },
+  { id: 103, title: "Cyber Glitch", artist: "0xNeo", price: 50.00, supply: 100, sold: 98, color: "bg-purple-900/40", image: "👾", tier: "pro" },
+];
+
+const INITIAL_VAULT = [
+  { uniqueId: 1, id: 1, seriesId: 101, title: "Blue Jay Series", status: "mint", acquiredDate: "Oct 15", image: "🐦", artist: "Sarah Aviary" },
+  { uniqueId: 2, id: 2, seriesId: 102, title: "Golden Era", status: "cancelled", acquiredDate: "Sep 01", usedDate: "Nov 20", destination: "NY, 10012", image: "🏛️", trackingHash: "0x99...22", artist: "Retro Works" },
+  { uniqueId: 3, id: 103, title: "Dead Drop Alpha", status: "geofenced", acquiredDate: "Just now", destination: "37.7749, -122.4194", image: "📍", targetGps: { lat: 37.7749, lng: -122.4194 }, artist: "The Oracle" }
+];
+
+const MAILBOX_PLANS = [
+    { id: 'personal', name: 'Personal Node', price: 9.99, features: ['Digital Forwarding', '1 User', 'Secure Scanning'] },
+    { id: 'business', name: 'Business Nexus', price: 49.99, features: ['Physical Address', '5 Users', 'Check Deposit', 'Registered Agent'] }
+];
+
+const MOCK_INCOMING_MAIL = {
+    id: 901,
+    sender: "District Court of NY",
+    date: "Oct 24, 2025",
+    ocrContent: "OFFICIAL SUMMONS. YOU ARE HEREBY NOTIFIED TO APPEAR FOR JURY DUTY ON NOVEMBER 15TH. FAILURE TO APPEAR MAY RESULT IN FINE. PLEASE RESPOND BY OCT 30."
+};
+
+const INITIAL_TRANSACTIONS = [
+    { id: 101, type: 'deposit', amount: 500.00, date: '2023-10-01', desc: 'Initial Top Up' },
+    { id: 102, type: 'purchase', amount: -15.00, date: '2023-10-15', desc: 'Mint: Blue Jay' },
+];
+
+// --- UTILITIES ---
+const generateHash = () => "0x" + Math.random().toString(16).substr(2, 8);
+const triggerHaptic = (pattern) => {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+};
+
+const ComplianceEngine = {
+  checkKCZ: (stampId) => {
+    return new Promise(resolve => setTimeout(() => resolve(true), 800));
+  },
+  validateGeofence: (currentPos, targetPos) => {
+    // Simplified logic
+    return true; 
+  }
+};
+
+// --- COMPONENTS ---
+
+const MobileHeader = ({ isPro, balance, onOpenLogs, isPurseLocked }) => (
+  <div className="fixed top-0 left-0 right-0 z-40 px-6 py-4 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/50 flex justify-between items-center">
+    <div className="flex items-center gap-3" onClick={onOpenLogs}>
+        <div className={`p-2 rounded-xl ${isPro ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-slate-800 border border-slate-700'}`}>
+            <Shield className={`w-5 h-5 ${isPro ? 'text-amber-500' : 'text-slate-400'}`} />
+        </div>
+        <div>
+            <h1 className="font-bold text-slate-100 text-base tracking-wide">MAIL<span className="text-amber-500">RING</span></h1>
+            <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase">Sovereign Logistics</p>
+        </div>
+    </div>
+    
+    <div className="flex items-center gap-3">
+        {isPurseLocked && <Lock className="w-4 h-4 text-red-500" />}
+        <div className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg flex items-center gap-2">
+            <span className="text-[10px] font-bold text-slate-500">BAL</span>
+            <span className="text-xs font-mono font-bold text-slate-200">${balance.toFixed(2)}</span>
+        </div>
+    </div>
+  </div>
+);
+
+const DesktopSidebar = ({ activeTab, setActiveTab, pendingCount }) => {
+    const navItems = [
+        { id: 'vault', icon: Wallet, label: 'ePurse', badge: pendingCount },
+        { id: 'market', icon: LayoutGrid, label: 'Market' },
+        { id: 'desk', icon: Send, label: 'Dispatch' },
+        { id: 'mailbox', icon: Box, label: 'Mailbox' },
+        { id: 'services', icon: Menu, label: 'Services' },
+        { id: 'creator', icon: Sparkles, label: 'Studio' }, 
+        { id: 'profile', icon: Zap, label: 'Pro' },
+    ];
+
+    return (
+        <div className="w-64 h-screen bg-slate-950 border-r border-slate-800 p-6 flex flex-col">
+            <div className="flex items-center gap-3 mb-10">
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <Shield className="w-6 h-6 text-amber-500" />
+                </div>
+                <div>
+                    <h1 className="font-bold text-slate-100 text-lg tracking-wide">MAIL<span className="text-amber-500">RING</span></h1>
+                    <p className="text-[10px] text-slate-500 font-mono uppercase">Web Terminal</p>
+                </div>
+            </div>
+
+            <nav className="space-y-2 flex-1">
+                {navItems.map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                            activeTab === item.id 
+                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
+                            : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                        }`}
+                    >
+                        <item.icon className="w-5 h-5" />
+                        <span className="font-bold text-sm">{item.label}</span>
+                        {item.badge > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full">{item.badge}</span>
+                        )}
+                    </button>
+                ))}
+            </nav>
+        </div>
+    );
+};
+
+const BottomNav = ({ activeTab, setActiveTab, pendingCount }) => {
+  const navItems = [
+    { id: 'vault', icon: Wallet, label: 'ePurse', badge: pendingCount },
+    { id: 'market', icon: LayoutGrid, label: 'Market' },
+    { id: 'desk', icon: Send, label: 'Dispatch', isMain: true },
+    { id: 'mailbox', icon: Box, label: 'Mailbox' },
+    { id: 'services', icon: Menu, label: 'Services' },
+  ];
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-8 pt-4 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
+        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl px-2 py-2 flex justify-between items-center shadow-2xl shadow-black/50">
+        {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            if (item.isMain) {
+                return (
+                    <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className="relative -top-6 bg-amber-500 text-slate-950 p-4 rounded-2xl shadow-lg shadow-amber-500/20 transition-transform active:scale-95 border-4 border-slate-950"
+                    >
+                        <Send className="w-6 h-6 fill-current" />
+                    </button>
+                )
+            }
+            return (
+                <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`relative p-3 rounded-xl transition-all duration-300 flex flex-col items-center gap-1 ${
+                    isActive ? 'text-amber-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'
+                }`}
+                >
+                <item.icon className={`w-5 h-5 ${isActive ? 'fill-current opacity-20' : ''}`} strokeWidth={2} />
+                <span className="text-[9px] font-medium">{item.label}</span>
+                {item.badge > 0 && !isActive && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
+                </button>
+            )
+        })}
+        </div>
+    </div>
+  );
+};
+
+const GlassBoxLog = ({ logs, onClose }) => {
+    const endRef = useRef(null);
+    useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
+
+    return (
+        <div className="fixed inset-x-4 bottom-24 h-48 bg-slate-900/95 backdrop-blur-xl font-mono text-xs z-[60] rounded-2xl flex flex-col shadow-2xl border border-slate-700/50 animate-slide-up ring-1 ring-black/5">
+            <div className="flex justify-between items-center p-3 border-b border-slate-700/50">
+                <div className="flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-emerald-500" />
+                    <span className="font-bold text-slate-100 tracking-wide">RingMint Hybrid Ledger // Trace</span>
+                </div>
+                <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-full transition-colors"><X className="w-4 h-4 text-slate-400 hover:text-white" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {logs.length === 0 && <span className="opacity-50 italic text-slate-500">Awaiting events...</span>}
+                {logs.map((log, i) => (
+                    <div key={i} className="flex gap-2 leading-relaxed items-start">
+                        <span className="opacity-40 select-none text-slate-500 shrink-0">[{log.time}]</span>
+                        <div className="flex-1 break-all">
+                            {log.layer && (
+                                <span className={`mr-2 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                    log.layer === 'RING' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 
+                                    log.layer === 'CORE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                    'bg-slate-800 text-slate-300'
+                                }`}>
+                                    {log.layer}
+                                </span>
+                            )}
+                            <span className={log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-slate-200' : 'text-slate-400'}>
+                                {log.msg}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                <div ref={endRef} />
+            </div>
+        </div>
+    );
+};
+
+// --- VIEWS ---
+
+const MailboxView = ({ isPro, onComposeReply, isMobileMode }) => {
+    const [activePlan, setActivePlan] = useState('personal');
+    const [incomingMail, setIncomingMail] = useState(null);
+    const [analysis, setAnalysis] = useState(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [isReplying, setIsReplying] = useState(false);
+    const [subtext, setSubtext] = useState(null);
+    const [loadingSubtext, setLoadingSubtext] = useState(false);
+
+    const handleScan = async () => {
+        setIsScanning(true);
+        setTimeout(async () => {
+            setIncomingMail(MOCK_INCOMING_MAIL);
+            const result = await analyzeIncomingMail(MOCK_INCOMING_MAIL.ocrContent);
+            setAnalysis(result);
+            setIsScanning(false);
+        }, 2000);
+    };
+
+    const handleAutoCounsel = async () => {
+        setIsReplying(true);
+        const replyDraft = await generateReplyAi(incomingMail.ocrContent, analysis?.category || 'General');
+        onComposeReply(replyDraft);
+    };
+
+    const handleDetectSubtext = async () => {
+        setLoadingSubtext(true);
+        const st = await analyzeSubtextAi(incomingMail.ocrContent);
+        setSubtext(st);
+        setLoadingSubtext(false);
+    };
+
+    return (
+        <div className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} animate-fade-in space-y-6`}>
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-slate-100">Sovereign Mailbox</h2>
+                <p className="text-slate-500 text-sm mt-1">Rent a physical endpoint for your digital life.</p>
+            </div>
+
+            {!incomingMail && (
+                <>
+                    <div className="grid grid-cols-2 gap-4">
+                        {MAILBOX_PLANS.map(plan => (
+                            <div 
+                                key={plan.id}
+                                onClick={() => setActivePlan(plan.id)}
+                                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                                    activePlan === plan.id 
+                                    ? 'bg-amber-500/10 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.1)]' 
+                                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                                }`}
+                            >
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 ${
+                                    activePlan === plan.id ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                                }`}>
+                                    {plan.id === 'personal' ? <User className="w-5 h-5" /> : <Building className="w-5 h-5" />}
+                                </div>
+                                <h3 className="text-slate-100 font-bold">{plan.name}</h3>
+                                <p className="text-slate-400 text-xs mt-1 mb-3">${plan.price}/mo</p>
+                                <ul className="space-y-1">
+                                    {plan.features.map((feat, i) => (
+                                        <li key={i} className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                                            <CheckCircle className="w-3 h-3 text-slate-600" /> {feat}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-center">
+                        <h4 className="text-slate-200 font-bold mb-2">Selected: {activePlan === 'personal' ? 'Personal Node' : 'Business Nexus'}</h4>
+                        <p className="text-xs text-slate-500 mb-6">
+                            {activePlan === 'personal' 
+                                ? 'Ideal for digital nomads requiring mail scanning and secure forwarding.' 
+                                : 'Full registered agent services and check depositing for sovereign entities.'}
+                        </p>
+                        <button className="w-full py-4 bg-slate-100 text-slate-950 font-bold rounded-xl hover:bg-white transition-colors">
+                            Initialize Lease
+                        </button>
+                    </div>
+                </>
+            )}
+
+            <div className="pt-4 border-t border-slate-800/50">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Current Inbox</h4>
+                    {!incomingMail && (
+                        <button 
+                            onClick={handleScan}
+                            disabled={isScanning}
+                            className="text-[10px] bg-slate-800 text-slate-300 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-slate-700"
+                        >
+                            {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <ScanLine className="w-3 h-3" />}
+                            Simulate Incoming Mail
+                        </button>
+                    )}
+                </div>
+
+                {isScanning ? (
+                    <div className="text-center py-8">
+                        <ScanLine className="w-10 h-10 text-amber-500 mx-auto mb-4 animate-pulse" />
+                        <p className="text-slate-400 font-mono text-xs">Scanning physical assets...</p>
+                        <p className="text-slate-600 text-[10px] mt-1">OCR Processing Active</p>
+                    </div>
+                ) : incomingMail ? (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 animate-fade-in">
+                        <div className="flex justify-between items-start mb-4 border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 className="text-slate-200 font-bold text-sm">New Letter Scanned</h3>
+                                <p className="text-slate-500 text-xs">From: {incomingMail.sender} • {incomingMail.date}</p>
+                            </div>
+                            <div className="bg-slate-800 p-2 rounded-lg">
+                                <FileText className="w-5 h-5 text-slate-400" />
+                            </div>
+                        </div>
+                        
+                        <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 mb-4">
+                            <p className="text-slate-400 text-xs font-mono leading-relaxed line-clamp-3">
+                                {incomingMail.ocrContent}
+                            </p>
+                        </div>
+
+                        {analysis ? (
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Sparkles className="w-4 h-4 text-amber-500" />
+                                        <span className="text-xs font-bold text-amber-500 uppercase">AI Mailroom Analysis</span>
+                                    </div>
+                                    <button 
+                                        onClick={handleDetectSubtext}
+                                        disabled={loadingSubtext}
+                                        className="text-[9px] text-fuchsia-400 flex items-center gap-1 hover:text-fuchsia-300"
+                                    >
+                                        {loadingSubtext ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
+                                        Detect Subtext
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500 text-xs">Category</span>
+                                        <span className="text-slate-300 text-xs font-mono">{analysis.category}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500 text-xs">Urgency</span>
+                                        <span className={`text-xs font-bold ${analysis.urgency === 'High' ? 'text-red-500' : 'text-slate-300'}`}>{analysis.urgency}</span>
+                                    </div>
+                                    <div className="pt-2 border-t border-amber-500/10">
+                                        <p className="text-slate-400 text-xs italic">"{analysis.summary}"</p>
+                                    </div>
+                                    {subtext && (
+                                        <div className="pt-2 border-t border-fuchsia-500/20 mt-2 animate-fade-in">
+                                            <p className="text-fuchsia-300 text-xs italic font-bold">Psych Analysis:</p>
+                                            <p className="text-slate-400 text-xs italic">{subtext}</p>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Auto-Counsel Action */}
+                                    <button 
+                                        onClick={handleAutoCounsel}
+                                        disabled={isReplying}
+                                        className="w-full mt-3 py-2 bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-amber-500/20 transition-all"
+                                    >
+                                        {isReplying ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquareReply className="w-3 h-3" />}
+                                        Auto-Counsel: Draft Reply
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex justify-center py-2">
+                                <Loader2 className="w-4 h-4 text-slate-600 animate-spin" />
+                            </div>
+                        )}
+                        
+                        <div className="mt-4 flex gap-2">
+                            <button onClick={() => setIncomingMail(null)} className="flex-1 py-3 text-xs font-bold text-slate-500 hover:text-slate-300">Archive</button>
+                            <button className="flex-1 py-3 bg-slate-100 text-slate-950 font-bold text-xs rounded-xl hover:bg-white">View Full Scan</button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 border-2 border-dashed border-slate-800 rounded-2xl">
+                        <Box className="w-10 h-10 text-slate-700 mx-auto mb-2" />
+                        <p className="text-slate-600 text-sm">No physical mail items pending.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const MailDesk = ({ userStamps, onSendMail, isPro, initialMessage, clearInitialMessage, isPurseLocked, isMobileMode }) => {
+  const [step, setStep] = useState(1);
+  const [mailType, setMailType] = useState(null);
+  const [docType, setDocType] = useState(null); 
+  const [selectedStamp, setSelectedStamp] = useState(null);
+  const [recipient, setRecipient] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSealing, setIsSealing] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+  
+  // Sovereign States
+  const [isSovereignMode, setIsSovereignMode] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState({ lat: "", lng: "" });
+  const [utilityAddress, setUtilityAddress] = useState("");
+
+  // AI States
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [isFormalizing, setIsFormalizing] = useState(false);
+  const [showAiInput, setShowAiInput] = useState(false);
+  const [showClauseInput, setShowClauseInput] = useState(false); 
+  const [showStyleInput, setShowStyleInput] = useState(false); 
+  const [isParsingAddr, setIsParsingAddr] = useState(false);
+  const [showTranslate, setShowTranslate] = useState(false);
+  
+  // NEW: Risk & Vibe State
+  const [riskReport, setRiskReport] = useState(null);
+  const [isRiskScanning, setIsRiskScanning] = useState(false);
+  const [vibeReport, setVibeReport] = useState(null);
+  const [isVibeScanning, setIsVibeScanning] = useState(false);
+
+  // DRAG REFS
+  const dragItemRef = useRef(null);
+  const dropZoneRef = useRef(null);
+
+  // Handle incoming draft from Mailbox
+  useEffect(() => {
+      if (initialMessage) {
+          setMailType('electronic');
+          setDocType('Legal'); // Default for auto-counsel
+          setMessage(initialMessage);
+          setStep(2);
+          clearInitialMessage();
+      }
+  }, [initialMessage, clearInitialMessage]);
+
+  const mintStamps = userStamps.filter(s => s.status === 'mint');
+
+  // ... (AI Handlers kept same)
+  const handleAiDraft = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsAiGenerating(true);
+    const text = await generateText(aiPrompt, docType);
+    setMessage(text);
+    setIsAiGenerating(false);
+    setShowAiInput(false);
+    setAiPrompt("");
+  };
+
+  const handleInsertClause = async () => {
+      if (!aiPrompt.trim()) return;
+      setIsAiGenerating(true);
+      const clause = await generateClauseAi(aiPrompt, docType);
+      setMessage(prev => prev + (prev ? "\n\n" : "") + clause);
+      setIsAiGenerating(false);
+      setShowClauseInput(false);
+      setAiPrompt("");
+  };
+
+  const handleFormalize = async () => {
+      if (!message.trim()) return;
+      setIsFormalizing(true);
+      const refined = await formalizeText(message, docType);
+      setMessage(refined);
+      setIsFormalizing(false);
+  };
+
+  const handleStyleRewrite = async (style) => {
+      if (!message.trim()) return;
+      setIsAiGenerating(true);
+      const styled = await rewriteStyleAi(message, style);
+      setMessage(styled);
+      setIsAiGenerating(false);
+      setShowStyleInput(false);
+  };
+  
+  const handleTranslate = async (lang) => {
+      if (!message.trim()) return;
+      setIsAiGenerating(true);
+      const translated = await translateTextAi(message, lang, docType);
+      setMessage(translated);
+      setIsAiGenerating(false);
+      setShowTranslate(false);
+  };
+  
+  const handleRiskScan = async () => {
+      if (!message.trim()) return;
+      setIsRiskScanning(true);
+      const report = await analyzeRiskAi(message);
+      setRiskReport(report);
+      setIsRiskScanning(false);
+  };
+
+  const handleVibeCheck = async () => {
+      if (!message.trim()) return;
+      setIsVibeScanning(true);
+      const vibe = await analyzeVibeAi(message);
+      setVibeReport(vibe);
+      setIsVibeScanning(false);
+      // Auto-hide after 3s
+      setTimeout(() => setVibeReport(null), 4000);
+  };
+
+  const handleSmartPaste = async () => {
+      const text = await  navigator.clipboard.readText().catch(() => "");
+      if(!text) { alert("Clipboard empty or permission denied"); return; }
+      
+      setIsParsingAddr(true);
+      const formatted = await parseAddressAi(text);
+      setRecipient(formatted);
+      setIsParsingAddr(false);
+  };
+
+  const handleGetLocation = () => {
+      if(!navigator.geolocation) { alert("Not supported"); return; }
+      navigator.geolocation.getCurrentPosition((pos) => {
+          setGpsCoords({ lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) });
+      });
+  };
+
+  const handleDragStart = (e, stamp) => {
+    // Basic drag init
+    if (isPurseLocked) return;
+    triggerHaptic([20]); // Pickup haptic
+    
+    // Calculate initial position relative to viewport
+    // For simplicity in this demo, we'll track pointer directly
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    setDragPosition({ x: clientX, y: clientY });
+    setSelectedStamp(stamp); // "Hold" this stamp
+    setIsDragging(true);
+  };
+
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    setDragPosition({ x: clientX, y: clientY });
+  };
+
+  const handleDragEnd = (e) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    
+    // Check drop zone collision
+    const dropZone = dropZoneRef.current.getBoundingClientRect();
+    const x = dragPosition.x;
+    const y = dragPosition.y;
+
+    // Check if pointer is inside envelope rect
+    if (x >= dropZone.left && x <= dropZone.right && y >= dropZone.top && y <= dropZone.bottom) {
+        triggerHaptic([30, 50]); // Drop success
+        // Stamp is now "Placed" (selectedStamp stays set)
+    } else {
+        // Returned to tray
+        setSelectedStamp(null);
+    }
+  };
+
+
+  const handleSeal = async () => {
+    if (isPurseLocked) {
+        alert("ePurse is LOCKED. Please unlock in Vault tab to authorize transactions.");
+        return;
+    }
+    triggerHaptic([50, 50, 50]);
+    setIsSealing(true);
+    setIsVerifying(true);
+    await ComplianceEngine.checkKCZ(selectedStamp.id);
+    setIsVerifying(false);
+    setTimeout(() => {
+        triggerHaptic(100);
+        onSendMail({
+            type: mailType,
+            recipient: isSovereignMode ? `${gpsCoords.lat}, ${gpsCoords.lng}` : recipient,
+            stampUniqueId: selectedStamp.uniqueId,
+            isGeofenced: isSovereignMode && mailType === 'electronic',
+            gpsCoordinates: isSovereignMode ? gpsCoords : null,
+            docType: docType
+        });
+        setStep(4);
+        setIsSealing(false);
+    }, 1500);
+  };
+
+  const reset = () => {
+      setStep(1);
+      setMailType(null);
+      setDocType(null);
+      setSelectedStamp(null);
+      setRecipient("");
+      setMessage("");
+      setGpsCoords({lat: "", lng: ""});
+      setUtilityAddress("");
+      setIsSovereignMode(false);
+      setRiskReport(null);
+      setVibeReport(null);
+  };
+
+  // STEP 1: Method & Type
+  if (step === 1) return (
+    <div className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} animate-fade-in flex flex-col h-full`}>
+      {/* ... (Same Step 1 Content) ... */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-slate-100">New Dispatch</h2>
+        <p className="text-slate-500 text-sm mt-1">Select secure custody protocol.</p>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <button onClick={() => setMailType('physical')} className={`p-4 rounded-2xl border transition-all text-left ${mailType === 'physical' ? 'bg-amber-500/10 border-amber-500/50' : 'bg-slate-900 border-slate-800'}`}>
+          <Mail className={`w-6 h-6 mb-2 ${mailType === 'physical' ? 'text-amber-500' : 'text-slate-500'}`} />
+          <h3 className="text-sm font-bold text-slate-200">Physical</h3>
+        </button>
+        <button onClick={() => setMailType('electronic')} className={`p-4 rounded-2xl border transition-all text-left ${mailType === 'electronic' ? 'bg-cyan-500/10 border-cyan-500/50' : 'bg-slate-900 border-slate-800'}`}>
+          <Lock className={`w-6 h-6 mb-2 ${mailType === 'electronic' ? 'text-cyan-500' : 'text-slate-500'}`} />
+          <h3 className="text-sm font-bold text-slate-200">Electronic</h3>
+        </button>
+      </div>
+
+      {mailType && (
+          <div className="space-y-3 animate-slide-up">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Secure Custody Classification</p>
+              {[{ id: 'Legal', icon: Scale, label: 'Legal (Notary)' }, { id: 'Financial', icon: Landmark, label: 'Financial (Bearer)' }, { id: 'Medical', icon: Stethoscope, label: 'Medical (HIPAA)' }, { id: 'Secret', icon: FileKey, label: 'Top Secret (Burn)' }].map(type => (
+                  <button key={type.id} onClick={() => { setDocType(type.id); setStep(2); }} className="w-full p-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-4 hover:border-slate-600 transition-colors">
+                      <div className="p-2 bg-slate-800 rounded-lg"><type.icon className="w-4 h-4 text-slate-300" /></div>
+                      <span className="text-sm font-medium text-slate-200">{type.label}</span>
+                      <ChevronRight className="w-4 h-4 text-slate-600 ml-auto" />
+                  </button>
+              ))}
+          </div>
+      )}
+    </div>
+  );
+
+  if (step === 2) return (
+     // ... (Same Step 2 Content, relying on prev logic) ...
+    <div className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} h-full flex flex-col animate-slide-up`}>
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={() => setStep(1)} className="p-2 bg-slate-900 rounded-full border border-slate-800 hover:border-slate-600"><ArrowLeft className="w-5 h-5 text-slate-400" /></button>
+        <div className="text-right"><h2 className="text-lg font-bold text-slate-100">Composition</h2><p className="text-[10px] text-amber-500 uppercase tracking-wider">{mailType} // {docType}</p></div>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
+        <div className="space-y-2">
+            <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-slate-500 uppercase">Recipient</label>
+                <div className="flex gap-3">
+                    {!isSovereignMode && (
+                        <button 
+                            onClick={handleSmartPaste}
+                            disabled={isParsingAddr}
+                            className="text-[10px] text-slate-400 hover:text-slate-200 flex items-center gap-1"
+                        >
+                            {isParsingAddr ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                            Smart Paste
+                        </button>
+                    )}
+                    <button onClick={() => setIsSovereignMode(!isSovereignMode)} className="text-[10px] text-cyan-500 hover:underline flex items-center gap-1"><Crosshair className="w-3 h-3" /> {isSovereignMode ? "Switch to Standard" : "Switch to GPS"}</button>
+                </div>
+            </div>
+            {isSovereignMode ? (
+                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex gap-2">
+                    <input type="text" placeholder="Lat" value={gpsCoords.lat} onChange={(e) => setGpsCoords({...gpsCoords, lat: e.target.value})} className="w-1/2 bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 text-sm font-mono"/>
+                    <input type="text" placeholder="Lng" value={gpsCoords.lng} onChange={(e) => setGpsCoords({...gpsCoords, lng: e.target.value})} className="w-1/2 bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 text-sm font-mono"/>
+                    <button onClick={handleGetLocation} className="p-2 bg-cyan-900/30 border border-cyan-500/30 rounded-lg text-cyan-400"><Navigation className="w-4 h-4" /></button>
+                </div>
+            ) : (
+                <textarea value={recipient} onChange={(e) => setRecipient(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 text-slate-200 focus:outline-none focus:border-amber-500/50 transition-colors h-24 resize-none" placeholder="Enter name, street, city..."/>
+            )}
+        </div>
+        
+        <div className="space-y-2">
+            <div className="flex justify-between items-center">
+               <label className="text-xs font-bold text-slate-500 uppercase">Message Body</label>
+               
+               {/* SCROLLABLE TOOLBAR */}
+               <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar max-w-[200px] sm:max-w-none">
+                   {/* Polyglot Button */}
+                   <button 
+                      onClick={() => setShowTranslate(!showTranslate)}
+                      className="text-[10px] font-bold text-blue-400 flex items-center gap-1 bg-blue-900/10 px-2 py-1 rounded border border-blue-500/20 hover:bg-blue-900/20 shrink-0"
+                    >
+                      <Languages className="w-3 h-3" />
+                      Polyglot
+                   </button>
+                    {/* Style Button */}
+                   <button 
+                      onClick={() => setShowStyleInput(!showStyleInput)}
+                      className="text-[10px] font-bold text-fuchsia-400 flex items-center gap-1 bg-fuchsia-900/10 px-2 py-1 rounded border border-fuchsia-500/20 hover:bg-fuchsia-900/20 shrink-0"
+                    >
+                      <Feather className="w-3 h-3" />
+                      Style
+                   </button>
+                   {/* Risk Radar Button */}
+                   <button 
+                      onClick={handleRiskScan}
+                      disabled={isRiskScanning || !message}
+                      className="text-[10px] font-bold text-red-400 flex items-center gap-1 bg-red-900/10 px-2 py-1 rounded border border-red-500/20 hover:bg-red-900/20 shrink-0"
+                    >
+                      {isRiskScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Siren className="w-3 h-3" />}
+                      Risk Scan
+                   </button>
+                   {/* Vibe Check Button */}
+                   <button 
+                      onClick={handleVibeCheck}
+                      disabled={isVibeScanning || !message}
+                      className="text-[10px] font-bold text-purple-400 flex items-center gap-1 bg-purple-900/10 px-2 py-1 rounded border border-purple-500/20 hover:bg-purple-900/20 shrink-0"
+                    >
+                      {isVibeScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-3 h-3" />}
+                      Vibe Check
+                   </button>
+                   {/* AI Clause Architect */}
+                   <button 
+                      onClick={() => setShowClauseInput(!showClauseInput)}
+                      className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 bg-emerald-900/10 px-2 py-1 rounded border border-emerald-500/20 hover:bg-emerald-900/20 shrink-0"
+                    >
+                      <FilePlus2 className="w-3 h-3" />
+                      Add Clause
+                   </button>
+                   <button 
+                      onClick={handleFormalize}
+                      disabled={isFormalizing || !message}
+                      className="text-[10px] font-bold text-slate-400 flex items-center gap-1 bg-slate-900 px-2 py-1 rounded border border-slate-800 hover:text-slate-200 shrink-0"
+                    >
+                      {isFormalizing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Scale className="w-3 h-3" />}
+                      Formalize
+                   </button>
+                   <button 
+                      onClick={() => setShowAiInput(!showAiInput)}
+                      className="text-[10px] font-bold text-amber-500 flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20 hover:bg-amber-500/20 shrink-0"
+                    >
+                      <Sparkles className="w-3 h-3" /> AI Draft
+                   </button>
+               </div>
+            </div>
+
+            {/* Translation Dropdown */}
+            {showTranslate && (
+                <div className="p-3 bg-blue-950/30 rounded-xl border border-blue-900 animate-fade-in flex gap-2 overflow-x-auto">
+                    {['Spanish', 'French', 'German', 'Japanese', 'Mandarin'].map(lang => (
+                        <button 
+                            key={lang}
+                            onClick={() => handleTranslate(lang)}
+                            className="px-3 py-1.5 bg-blue-900/50 text-blue-200 text-xs rounded-lg hover:bg-blue-800 whitespace-nowrap"
+                        >
+                            {lang}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Style Dropdown */}
+            {showStyleInput && (
+                <div className="p-3 bg-fuchsia-950/30 rounded-xl border border-fuchsia-900 animate-fade-in flex gap-2 overflow-x-auto">
+                    {['Cyberpunk', 'Victorian', 'Haiku', 'Noir', 'Minimalist'].map(style => (
+                        <button 
+                            key={style}
+                            onClick={() => handleStyleRewrite(style)}
+                            className="px-3 py-1.5 bg-fuchsia-900/50 text-fuchsia-200 text-xs rounded-lg hover:bg-fuchsia-800 whitespace-nowrap"
+                        >
+                            {style}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* General AI Draft Input */}
+            {showAiInput && (
+              <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 animate-fade-in">
+                 <input 
+                    type="text" 
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="Describe your intent..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-200 mb-2 focus:outline-none"
+                 />
+                 <button 
+                    onClick={handleAiDraft}
+                    disabled={isAiGenerating}
+                    className="w-full py-2 bg-amber-600 text-slate-950 font-bold text-xs rounded-lg"
+                 >
+                    {isAiGenerating ? "Generating..." : "Generate Draft"}
+                 </button>
+              </div>
+            )}
+
+            {/* Clause Architect Input */}
+            {showClauseInput && (
+              <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-900 animate-fade-in">
+                 <input 
+                    type="text" 
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="E.g., 'Force Majeure', 'Non-Compete 2 Years'"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-200 mb-2 focus:outline-none"
+                 />
+                 <button 
+                    onClick={handleInsertClause}
+                    disabled={isAiGenerating}
+                    className="w-full py-2 bg-emerald-600 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-2"
+                 >
+                    {isAiGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <FilePlus2 className="w-3 h-3" />}
+                    Insert Clause
+                 </button>
+              </div>
+            )}
+
+            {riskReport && riskReport.riskScore > 0 && (
+                <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-xl animate-fade-in">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-red-400 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> Risk Score: {riskReport.riskScore}/100
+                        </span>
+                        <button onClick={() => setRiskReport(null)} className="text-red-400 hover:text-white"><X className="w-3 h-3" /></button>
+                    </div>
+                    <ul className="list-disc list-inside text-[10px] text-red-300/80">
+                        {riskReport.issues.map((issue, i) => (
+                            <li key={i}>{issue}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            
+            {vibeReport && (
+                <div className="p-3 bg-purple-900/20 border border-purple-500/30 rounded-xl animate-fade-in flex items-center justify-between">
+                     <span className="text-xs font-bold text-purple-300 flex items-center gap-2">
+                        <BrainCircuit className="w-4 h-4" /> 
+                        Tone Detected: <span className="text-white">{vibeReport}</span>
+                     </span>
+                     <button onClick={() => setVibeReport(null)} className="text-purple-400 hover:text-white"><X className="w-3 h-3" /></button>
+                </div>
+            )}
+
+           <textarea value={message} onChange={(e) => setMessage(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 h-48 text-slate-200 focus:outline-none focus:border-amber-500/50 transition-colors resize-none leading-relaxed" placeholder="Type your correspondence here..." />
+        </div>
+      </div>
+      <button disabled={(!recipient && !isSovereignMode)} onClick={() => setStep(3)} className="mt-6 w-full h-14 bg-slate-100 text-slate-950 rounded-xl font-bold text-base shadow-lg active:scale-95 transition-all disabled:opacity-50">Proceed to Postage</button>
+    </div>
+  );
+
+  // STEP 3: Postage with DRAG AND DROP
+  if (step === 3) return (
+    <div 
+        className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} h-full flex flex-col animate-slide-up touch-none`}
+        onMouseMove={handleDragMove}
+        onTouchMove={handleDragMove}
+        onMouseUp={handleDragEnd}
+        onTouchEnd={handleDragEnd}
+    >
+       <div className="flex items-center justify-between mb-8 select-none">
+        <button onClick={() => setStep(2)} className="p-2 bg-slate-900 rounded-full border border-slate-800 hover:border-slate-600"><ArrowLeft className="w-5 h-5 text-slate-400" /></button>
+        <h2 className="text-lg font-bold text-slate-100">Apply Postage</h2>
+        <div className="w-9"></div>
+      </div>
+
+      {/* The Envelope (Drop Target) */}
+      <div className="relative flex-1 bg-slate-900/50 rounded-3xl p-6 flex items-center justify-center overflow-hidden border border-slate-800 shadow-inner select-none">
+         <div 
+            ref={dropZoneRef}
+            className="w-full aspect-[4/5] max-h-96 bg-[#fdfbf7] shadow-2xl rounded-lg p-6 relative flex flex-col border border-slate-200"
+            style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cream-paper.png")' }} // Texture
+         >
+            {/* Stamp Box */}
+            <div className={`absolute top-6 right-6 w-24 h-28 border-2 border-dashed rounded-lg flex items-center justify-center transition-colors ${isDragging ? 'border-amber-400 bg-amber-50' : 'border-slate-300'}`}>
+              {!selectedStamp && !isDragging && (
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center">Place Stamp Here</span>
+              )}
+            </div>
+            
+            {/* Address Lines */}
+            <div className="mt-40 w-full space-y-6 px-8 opacity-60">
+               <div className="h-0.5 w-full bg-slate-300"></div>
+               <div className="h-0.5 w-full bg-slate-300"></div>
+               <div className="h-0.5 w-2/3 bg-slate-300"></div>
+            </div>
+
+            {/* Placed Stamp */}
+            {selectedStamp && !isDragging && (
+                <div className="absolute top-6 right-6 w-24 h-28 shadow-md rounded flex items-center justify-center bg-white overflow-hidden border-[0.5px] border-slate-200">
+                    {/* Perforation effect via CSS mask would go here, simplified for react-native-web compat */}
+                    <div className="text-4xl">{selectedStamp.image}</div>
+                    {/* Postmark if needed later */}
+                </div>
+            )}
+            
+            {selectedStamp && !isDragging && (
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center pb-4 animate-fade-in z-10">
+                 <button 
+                  onClick={handleSeal}
+                  className="bg-amber-500 text-slate-950 font-bold px-10 py-4 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center gap-3 active:scale-90 transition-transform"
+                >
+                  <Fingerprint className="w-6 h-6" />
+                  Sign & Seal
+                </button>
+              </div>
+            )}
+         </div>
+      </div>
+      
+      {/* Stamp Tray (Draggable Source) */}
+      <div className="mt-8">
+        <p className="text-xs text-slate-500 font-bold uppercase mb-3 text-center">Your Collection</p>
+        <div className="overflow-x-auto pb-8 flex gap-4 snap-x no-scrollbar justify-start px-4">
+            {mintStamps.map(stamp => (
+                // If this stamp is currently being dragged, hide it in the tray
+                (isDragging && selectedStamp?.uniqueId === stamp.uniqueId) ? (
+                    <div key={stamp.uniqueId} className="w-24 h-32 shrink-0 bg-slate-800/30 rounded-xl border border-dashed border-slate-700"></div>
+                ) : (
+                    <div 
+                        key={stamp.uniqueId}
+                        onMouseDown={(e) => handleDragStart(e, stamp)}
+                        onTouchStart={(e) => handleDragStart(e, stamp)}
+                        className="snap-center shrink-0 w-24 h-32 rounded-xl border-2 border-slate-700 bg-slate-900 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing shadow-lg relative overflow-hidden"
+                    >
+                        <div className="text-3xl filter drop-shadow-lg">{stamp.image}</div>
+                        <div className="absolute bottom-2 left-0 right-0 text-center">
+                             <span className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">{stamp.title}</span>
+                        </div>
+                    </div>
+                )
+            ))}
+        </div>
+      </div>
+
+      {/* DRAGGED GHOST ELEMENT */}
+      {isDragging && selectedStamp && (
+          <div 
+            className="fixed w-28 h-36 rounded-lg bg-white shadow-2xl z-[100] flex items-center justify-center pointer-events-none transform -translate-x-1/2 -translate-y-1/2 border-4 border-white"
+            style={{ 
+                left: dragPosition.x, 
+                top: dragPosition.y,
+                transform: `translate(-50%, -50%) rotate(5deg) scale(1.1)` 
+            }}
+          >
+             <div className="text-5xl">{selectedStamp.image}</div>
+          </div>
+      )}
+
+      {isSealing && (
+        <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-center z-50 text-slate-100 rounded-[2.5rem] animate-fade-in">
+             {/* ... Sealing Animation ... */}
+             <div className="w-24 h-24 rounded-full border-4 border-amber-500 flex items-center justify-center mb-8 animate-pulse shadow-[0_0_40px_rgba(245,158,11,0.5)]">
+                <Fingerprint className="w-12 h-12 text-amber-500" />
+              </div>
+              <h3 className="text-2xl font-bold tracking-tight">Authenticating</h3>
+        </div>
+      )}
+    </div>
+  );
+
+  // STEP 4: Success
+  if (step === 4) return (
+    <div className="p-8 pb-32 h-full flex flex-col items-center justify-center text-center animate-scale-up">
+      <div className="w-28 h-28 bg-emerald-500/10 rounded-full flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(16,185,129,0.2)] border border-emerald-500/20">
+        <Send className="w-12 h-12 text-emerald-500" />
+      </div>
+      <h2 className="text-3xl font-bold text-slate-100 mb-3 tracking-tight">Dispatch Sent</h2>
+      <p className="text-slate-500 mb-10 max-w-xs leading-relaxed">
+        Your asset has been locked in escrow. Tracking has been initialized on-chain.
+      </p>
+      <div className="bg-slate-900 px-8 py-5 rounded-2xl border border-slate-800 mb-10 w-full shadow-inner">
+        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mb-2">Tracking Hash</p>
+        <p className="font-mono text-amber-500 font-bold text-sm truncate">{generateHash()}</p>
+      </div>
+      <button onClick={reset} className="text-slate-100 font-bold py-4 px-8 rounded-full border border-slate-700 hover:bg-slate-800 w-full transition-colors">
+        Start New Dispatch
+      </button>
+    </div>
+  );
+};
+
+const ServicesView = ({ setActiveTab, isPro, isMobileMode }) => (
+    <div className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} animate-fade-in grid grid-cols-2 gap-4`}>
+        <button onClick={() => setActiveTab('creator')} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center gap-3 hover:bg-slate-800 transition-colors">
+            <Sparkles className="w-8 h-8 text-fuchsia-500" />
+            <span className="font-bold text-slate-200">Creator Studio</span>
+        </button>
+        <button onClick={() => setActiveTab('profile')} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col items-center gap-3 hover:bg-slate-800 transition-colors">
+            <Zap className={`w-8 h-8 ${isPro ? 'text-amber-500' : 'text-slate-500'}`} />
+            <span className="font-bold text-slate-200">Membership</span>
+        </button>
+        {/* Placeholders for future services */}
+        <button className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl flex flex-col items-center gap-3 opacity-50">
+            <Globe className="w-8 h-8 text-slate-600" />
+            <span className="font-bold text-slate-500">Node Status</span>
+        </button>
+        <button className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl flex flex-col items-center gap-3 opacity-50">
+            <Server className="w-8 h-8 text-slate-600" />
+            <span className="font-bold text-slate-500">Relay Config</span>
+        </button>
+    </div>
+);
+
+const MarketView = ({ inventory, onBuy, balance, isPro, isMobileMode }) => {
+  const [appraisal, setAppraisal] = useState(null);
+  const [loadingAppraisal, setLoadingAppraisal] = useState(null);
+
+  const handleAppraise = async (stamp) => {
+      setLoadingAppraisal(stamp.id);
+      const report = await generateAppraisalAi(stamp.title, stamp.artist, stamp.price);
+      setAppraisal({ id: stamp.id, text: report });
+      setLoadingAppraisal(null);
+  };
+
+  return (
+  <div className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} animate-fade-in space-y-6`}>
+    <h2 className="text-2xl font-bold text-slate-100">Marketplace</h2>
+    <div className={`grid ${isMobileMode ? 'grid-cols-2' : 'grid-cols-4'} gap-4`}>
+      {inventory.map(stamp => (
+        <div key={stamp.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col relative group">
+            <div className={`aspect-[3/4] ${stamp.color} rounded-xl flex items-center justify-center text-4xl mb-3 relative overflow-hidden`}>
+                {stamp.image}
+                {/* Analyst Overlay */}
+                {appraisal?.id === stamp.id && (
+                    <div className="absolute inset-0 bg-slate-950/95 p-3 text-[10px] leading-relaxed text-emerald-400 font-mono overflow-y-auto">
+                        "{appraisal.text}"
+                        <button onClick={(e) => { e.stopPropagation(); setAppraisal(null); }} className="block mt-2 text-slate-500 underline">Close</button>
+                    </div>
+                )}
+                <button 
+                    onClick={(e) => { e.stopPropagation(); handleAppraise(stamp); }} 
+                    className="absolute top-2 right-2 p-1.5 bg-slate-900/80 backdrop-blur rounded-full text-emerald-400 hover:text-white border border-emerald-500/30"
+                    title="Consult AI Analyst"
+                >
+                    {loadingAppraisal === stamp.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
+                </button>
+            </div>
+            <h3 className="text-sm font-bold text-slate-200">{stamp.title}</h3>
+            <div className="mt-auto pt-2 flex justify-between items-center">
+                <span className="text-xs text-slate-400">${stamp.price}</span>
+                <button onClick={() => onBuy(stamp)} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700"><CreditCard className="w-3 h-3" /></button>
+            </div>
+        </div>
+      ))}
+    </div>
+  </div>
+  );
+};
+
+const EPurseView = ({ userStamps, balance, onUnlockGeofence, transactions, onTopUp, onWithdraw, isLocked, setIsLocked, onPayout, isMobileMode }) => {
+    const [lore, setLore] = useState({});
+    const [view, setView] = useState('assets'); // 'assets' | 'history'
+    
+    const handleConsultCurator = async (stamp) => {
+        if (lore[stamp.uniqueId]) { setLore(prev => ({ ...prev, [stamp.uniqueId]: null })); return; }
+        const text = await generateLore(stamp.title, stamp.artist || "Unknown");
+        setLore(prev => ({ ...prev, [stamp.uniqueId]: text }));
+    };
+
+    return (
+    <div className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} animate-fade-in space-y-6`}>
+        <h2 className="text-2xl font-bold text-slate-100">Vault</h2>
+        {/* Dark Mode Card with Actions */}
+        <div className={`relative w-full ${isMobileMode ? 'aspect-[1.6]' : 'aspect-[2.5]'} rounded-3xl overflow-hidden shadow-2xl shadow-black/50 bg-gradient-to-br from-slate-900 to-black border border-slate-800 p-6 flex flex-col justify-between text-slate-200 transition-all`}>
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-white">RingMint Enclave</span>
+                </div>
+                <button 
+                    onClick={() => setIsLocked(!isLocked)} 
+                    className={`p-2 rounded-full transition-colors ${isLocked ? 'bg-red-500/20 text-red-500' : 'bg-slate-800/50 text-slate-400 hover:text-white'}`}
+                >
+                    {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                </button>
+            </div>
+            <div>
+                <div className="flex items-baseline gap-2">
+                    <h2 className="text-3xl font-mono font-bold text-white">${balance.toFixed(2)}</h2>
+                    <span className="text-sm font-bold text-slate-400">USDB</span>
+                </div>
+                <span className="text-[10px] text-slate-500 uppercase tracking-widest">Available Balance</span>
+            </div>
+            <div className="flex justify-between items-end">
+                <div>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase mb-1">Decentralized ID</p>
+                    <p className="font-mono text-xs text-slate-300">did:ring:8x92...3a1</p>
+                </div>
+                <QrCode className="w-8 h-8 text-white opacity-80" />
+            </div>
+        </div>
+
+        {/* ePurse Actions */}
+        <div className="grid grid-cols-3 gap-3">
+            <button onClick={onTopUp} className="py-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[10px] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-emerald-500/20 transition-colors">
+                <ArrowDownLeft className="w-4 h-4" /> Deposit
+            </button>
+            <button onClick={onWithdraw} className="py-3 bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-[10px] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-red-500/20 transition-colors">
+                <ArrowUpRight className="w-4 h-4" /> Withdraw
+            </button>
+            <button onClick={onPayout} className="py-3 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold text-[10px] rounded-xl flex flex-col items-center justify-center gap-1 hover:bg-indigo-500/20 transition-colors">
+                <LogOut className="w-4 h-4" /> Payout
+            </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button 
+                onClick={() => setView('assets')} 
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${view === 'assets' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+                Assets
+            </button>
+            <button 
+                onClick={() => setView('history')} 
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${view === 'history' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+                History
+            </button>
+        </div>
+
+        {/* Content Area */}
+        {view === 'assets' ? (
+            <div className={`grid ${isMobileMode ? 'grid-cols-2' : 'grid-cols-4'} gap-4`}>
+                {userStamps.map(stamp => (
+                    <div key={stamp.uniqueId} className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-col items-center text-center relative overflow-hidden group">
+                        <div className="w-full aspect-square bg-slate-950 rounded-xl flex items-center justify-center text-3xl mb-2 relative shadow-inner">
+                            {stamp.status === 'geofenced' ? <Lock className="w-8 h-8 text-indigo-500" /> : stamp.image}
+                            {lore[stamp.uniqueId] && (
+                                <div className="absolute inset-0 bg-slate-950/95 p-2 text-[9px] text-left overflow-y-auto text-slate-300 font-serif leading-relaxed border border-amber-500/20">"{lore[stamp.uniqueId]}"</div>
+                            )}
+                            <button onClick={() => handleConsultCurator(stamp)} className="absolute top-1 right-1 p-1.5 bg-slate-900/80 backdrop-blur rounded-full text-slate-400 hover:text-amber-500 transition-colors border border-slate-700"><MessageSquareQuote className="w-3 h-3" /></button>
+                        </div>
+                        <span className="text-xs font-bold text-slate-300 truncate w-full px-1">{stamp.title}</span>
+                        <span className="text-[9px] text-slate-500 uppercase mt-1 tracking-wider">{stamp.status}</span>
+                        {stamp.status === 'geofenced' && (
+                            <button onClick={() => onUnlockGeofence(stamp.uniqueId, true, {latitude:0, longitude:0})} className="mt-2 w-full py-1 bg-indigo-500/10 text-indigo-400 text-[10px] font-bold rounded border border-indigo-500/30 hover:bg-indigo-500/20 transition-colors">Unlock</button>
+                        )}
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <div className="space-y-2">
+                {transactions.slice().reverse().map(tx => (
+                    <div key={tx.id} className="bg-slate-900 border border-slate-800 p-3 rounded-xl flex justify-between items-center hover:border-slate-700 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full ${tx.type === 'deposit' ? 'bg-emerald-500/10 text-emerald-500' : tx.type === 'withdraw' || tx.type === 'payout' ? 'bg-red-500/10 text-red-400' : 'bg-slate-800 text-slate-400'}`}>
+                                {tx.type === 'deposit' ? <Plus className="w-4 h-4" /> : (tx.type === 'withdraw' || tx.type === 'payout') ? <LogOut className="w-4 h-4" /> : <Coins className="w-4 h-4" />}
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-slate-200">{tx.desc}</p>
+                                <p className="text-[10px] text-slate-500">{tx.date}</p>
+                            </div>
+                        </div>
+                        <span className={`font-mono text-xs font-bold ${tx.amount > 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                            {tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(2)}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        )}
+    </div>
+    );
+};
+
+const CreatorStudio = ({ onAddStamp, balance, isMobileMode }) => {
+    const [prompt, setPrompt] = useState("");
+    const [title, setTitle] = useState("");
+    const [faceValue, setFaceValue] = useState("0.68");
+    const [supply, setSupply] = useState("1000");
+    const [premium, setPremium] = useState("0.50");
+    const [royalty, setRoyalty] = useState("5");
+    const [loading, setLoading] = useState(false);
+    const [generatedImage, setGeneratedImage] = useState(null);
+    const MINT_FEE = 5.00;
+
+    const handleGenerate = async () => {
+        if (!prompt) return;
+        setLoading(true);
+        const img = await generateStampImage(prompt);
+        setGeneratedImage(img);
+        setLoading(false);
+    };
+
+    const handleEnhance = async () => {
+        if (!prompt) return;
+        setLoading(true);
+        const enhanced = await enhancePromptAi(prompt);
+        setPrompt(enhanced);
+        setLoading(false);
+    };
+
+    const handleDescription = async () => {
+        if (!title || !prompt) { alert("Please enter Title and Prompt."); return; }
+        setLoading(true);
+        // Using generateText as a placeholder for description generation logic not explicitly broken out
+        const desc = await generateText(`Write a description for stamp: ${title}. Concept: ${prompt}`, "Marketing");
+        alert(desc); 
+        setLoading(false);
+    };
+
+    const handleMint = () => {
+        if (balance < MINT_FEE) { alert("Insufficient funds for minting fee."); return; }
+        if (generatedImage && title) {
+            onAddStamp({
+                title: title,
+                image: generatedImage,
+                artist: "Me (Creator)",
+                faceValue: parseFloat(faceValue),
+                supply: parseInt(supply),
+                premium: parseFloat(premium),
+                royalty: parseFloat(royalty),
+                isAiGenerated: true,
+                mintFee: MINT_FEE
+            });
+            setGeneratedImage(null);
+            setPrompt("");
+            setTitle("");
+            setFaceValue("0.68");
+            setSupply("1000");
+            setPremium("0.50");
+            setRoyalty("5");
+        } else {
+            alert("Please generate art and provide a title.");
+        }
+    };
+
+    // Mock Creator Stats
+    const stats = {
+        earnings: 124.50,
+        circulation: 850,
+        burnRate: "12%"
+    };
+
+    return (
+        <div className={`p-6 ${isMobileMode ? 'pt-28 pb-32' : 'pt-10'} h-full animate-fade-in flex flex-col`}>
+             <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-100 mb-1">Creator Studio</h2>
+                <p className="text-slate-500 text-sm">Generative philately engine.</p>
+             </div>
+
+             {/* Creator Dashboard Stats */}
+             <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Earnings</p>
+                    <p className="text-lg font-mono text-emerald-400 font-bold">${stats.earnings.toFixed(2)}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Circulation</p>
+                    <p className="text-lg font-mono text-indigo-400 font-bold">{stats.circulation}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-center">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Burn Rate</p>
+                    <p className="text-lg font-mono text-rose-400 font-bold flex items-center justify-center gap-1"><Flame className="w-3 h-3" />{stats.burnRate}</p>
+                </div>
+             </div>
+
+             <div className="flex-1 bg-slate-900 border border-slate-800 rounded-[2rem] p-6 shadow-sm flex flex-col">
+                 {/* Preview / Generation Area */}
+                 <div className="flex-1 bg-slate-950 rounded-3xl border-2 border-dashed border-slate-800 mb-6 flex items-center justify-center relative overflow-hidden min-h-[12rem]">
+                     {loading ? (
+                         <div className="text-center">
+                             <Loader2 className="w-12 h-12 text-fuchsia-500 animate-spin mx-auto mb-4" />
+                             <p className="text-sm text-fuchsia-600 font-bold tracking-wide">Synthesizing...</p>
+                         </div>
+                     ) : generatedImage ? (
+                         <img src={generatedImage} alt="Generated" className="w-full h-full object-contain p-8 animate-scale-up" />
+                     ) : (
+                         <div className="text-center text-slate-700">
+                             <ImageIcon className="w-16 h-16 mx-auto mb-3 opacity-50" />
+                             <p className="text-sm font-medium">Preview Area</p>
+                         </div>
+                     )}
+                 </div>
+
+                 {/* Inputs */}
+                 <div className="space-y-4">
+                     {!generatedImage ? (
+                         <div className="relative">
+                            <textarea 
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                placeholder="Describe your stamp design..."
+                                className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl h-24 focus:outline-none text-slate-200 text-sm pr-12"
+                            />
+                            <button 
+                                onClick={handleEnhance}
+                                className="absolute bottom-3 right-3 p-2 bg-fuchsia-900/20 text-fuchsia-500 rounded-lg hover:bg-fuchsia-900/40"
+                                title="Enhance Prompt with AI"
+                            >
+                                <Wand2 className="w-4 h-4" />
+                            </button>
+                         </div>
+                     ) : (
+                         <div className="space-y-3 animate-fade-in">
+                             <div>
+                                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Series Title</label>
+                                 <input 
+                                    type="text" 
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="e.g. Neon Horizon"
+                                    className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-sm focus:outline-none"
+                                 />
+                             </div>
+                             <div className="flex gap-3">
+                                 <div className="flex-1">
+                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Face Value (USDB)</label>
+                                     <div className="relative">
+                                         <DollarSign className="w-3 h-3 text-slate-500 absolute left-3 top-3.5" />
+                                         <input 
+                                            type="number" 
+                                            value={faceValue}
+                                            onChange={(e) => setFaceValue(e.target.value)}
+                                            className="w-full p-3 pl-8 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-sm focus:outline-none"
+                                         />
+                                     </div>
+                                 </div>
+                                 <div className="flex-1">
+                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Total Supply</label>
+                                     <div className="relative">
+                                         <Layers className="w-3 h-3 text-slate-500 absolute left-3 top-3.5" />
+                                         <input 
+                                            type="number" 
+                                            value={supply}
+                                            onChange={(e) => setSupply(e.target.value)}
+                                            className="w-full p-3 pl-8 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-sm focus:outline-none"
+                                         />
+                                     </div>
+                                 </div>
+                             </div>
+                             <div className="flex gap-3">
+                                 <div className="flex-1">
+                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Premium</label>
+                                     <div className="relative">
+                                         <DollarSign className="w-3 h-3 text-slate-500 absolute left-3 top-3.5" />
+                                         <input 
+                                            type="number" 
+                                            value={premium}
+                                            onChange={(e) => setPremium(e.target.value)}
+                                            className="w-full p-3 pl-8 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-sm focus:outline-none"
+                                         />
+                                     </div>
+                                 </div>
+                                 <div className="flex-1">
+                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Royalty %</label>
+                                     <div className="relative">
+                                         <Percent className="w-3 h-3 text-slate-500 absolute left-3 top-3.5" />
+                                         <input 
+                                            type="number" 
+                                            value={royalty}
+                                            onChange={(e) => setRoyalty(e.target.value)}
+                                            className="w-full p-3 pl-8 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 text-sm focus:outline-none"
+                                         />
+                                     </div>
+                                 </div>
+                             </div>
+                              <button 
+                                onClick={handleDescription}
+                                className="w-full py-3 bg-slate-800 text-slate-400 font-bold text-xs rounded-xl flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors"
+                             >
+                                <Sparkles className="w-3 h-3" /> Generate Lore/Description
+                             </button>
+                         </div>
+                     )}
+
+                     {/* Action Button */}
+                     {!generatedImage ? (
+                         <button 
+                            onClick={handleGenerate}
+                            disabled={loading || !prompt}
+                            className="w-full py-4 rounded-2xl font-bold text-sm bg-slate-100 text-slate-900 hover:bg-white transition-colors"
+                         >
+                            Generate Art
+                         </button>
+                     ) : (
+                         <div className="grid grid-cols-2 gap-4">
+                             <button 
+                                onClick={() => setGeneratedImage(null)}
+                                className="py-4 rounded-2xl font-bold text-sm bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors"
+                             >
+                                Discard
+                             </button>
+                             <button 
+                                onClick={handleMint}
+                                className="py-4 rounded-2xl font-bold text-sm bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-600/30 hover:bg-fuchsia-500 transition-colors flex flex-col items-center justify-center leading-none gap-1"
+                             >
+                                <span>Mint Series</span>
+                                <span className="text-[9px] opacity-70 font-normal">Fee: {MINT_FEE.toFixed(2)} USDB</span>
+                             </button>
+                         </div>
+                     )}
+                 </div>
+             </div>
+        </div>
+    );
+};
+
+const ProfileView = ({ isPro, togglePro, isMobileMode }) => (
+    <div className={`p-6 ${isMobileMode ? 'pt-28' : 'pt-10'} text-center`}>
+        <h2 className="text-2xl font-bold text-slate-100 mb-6">Membership</h2>
+        <button onClick={togglePro} className="px-6 py-3 bg-amber-500 text-slate-950 font-bold rounded-xl">{isPro ? "Cancel Pro" : "Upgrade Pro"}</button>
+    </div>
+);
+
+// --- MAIN APP ---
+
+const App = () => {
+  const [activeTab, setActiveTab] = useState('desk');
+  const [isPro, setIsPro] = useState(false);
+  const [balance, setBalance] = useState(INITIAL_BALANCE);
+  const [userStamps, setUserStamps] = useState(INITIAL_VAULT);
+  const [inventory, setInventory] = useState(INITIAL_MARKET);
+  const [draftMessage, setDraftMessage] = useState(""); 
+  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS); 
+  const [isPurseLocked, setIsPurseLocked] = useState(false); 
+  
+  // Format Toggle State
+  const [isMobileMode, setIsMobileMode] = useState(true);
+  
+  // LOGS STATE
+  const [showLogs, setShowLogs] = useState(false);
+  const [sysLogs, setSysLogs] = useState([]);
+
+  // Fix for potential Tailwind CDN configuration issues
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.tailwind) {
+      window.tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              slate: { 950: '#020617' } // Ensure slate-950 exists
+            }
+          }
+        }
+      }
+    }
+  }, []);
+
+  const addLog = (msg, layer='RING', type='info') => {
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setSysLogs(prev => [...prev, { time, msg, layer, type }]);
+  };
+  
+  const pendingCount = userStamps.filter(s => s.status === 'locked').length;
+
+  const handleBuy = (stamp) => {
+    if (balance >= stamp.price) {
+      if (isPurseLocked) { alert("Wallet Locked"); return; }
+      setBalance(prev => prev - stamp.price);
+      const newStamp = { ...stamp, uniqueId: Date.now(), status: "mint", acquiredDate: "Just now" };
+      setUserStamps(prev => [newStamp, ...prev]);
+      
+      const newTx = { id: Date.now(), type: 'purchase', amount: -stamp.price, date: 'Just now', desc: `Mint: ${stamp.title}` };
+      setTransactions(prev => [newTx, ...prev]);
+
+      triggerHaptic(50);
+      addLog(`MINT: User purchased '${stamp.title}'`, 'RING', 'success');
+    }
+  };
+
+  const handleAddAiStamp = (newStampData) => {
+      // Check balance for mint fee
+      if (balance < newStampData.mintFee) {
+          alert("Insufficient USDB for minting fee.");
+          return;
+      }
+
+      // Deduct Fee
+      setBalance(prev => prev - newStampData.mintFee);
+      
+      // Log Transaction
+      const newTx = { 
+          id: Date.now(), 
+          type: 'fee', 
+          amount: -newStampData.mintFee, 
+          date: 'Just now', 
+          desc: `Mint Fee: ${newStampData.title}` 
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      // Mint Asset (Add to User Vault)
+      const stamp = {
+          uniqueId: Date.now(),
+          id: Date.now(),
+          title: newStampData.title,
+          status: "mint",
+          acquiredDate: "Just now",
+          image: newStampData.image,
+          isAiGenerated: true,
+          artist: newStampData.artist, // "Me (Creator)"
+          price: newStampData.faceValue,
+          supply: newStampData.supply
+      };
+      setUserStamps(prev => [stamp, ...prev]);
+      
+      setActiveTab('vault');
+      triggerHaptic(100);
+      addLog(`CREATOR: Minted Series '${newStampData.title}' on RingMint`, 'RING', 'success');
+      addLog(`SMART_CONTRACT: Supply Cap set to ${newStampData.supply}, Royalty ${newStampData.royalty}%`, 'RING');
+      addLog(`EPURSE: Gas/Mint Fee $${newStampData.mintFee} USDB`, 'CORE', 'warning');
+  };
+
+  const handleUnlockGeofence = (uniqueId, success, coords) => {
+      if (success) {
+          addLog(`GEOFENCE: Validated at ${coords.latitude},${coords.longitude}`, 'CORE', 'success');
+          setUserStamps(prev => prev.map(s => s.uniqueId === uniqueId ? { ...s, status: 'cancelled' } : s));
+      }
+  };
+
+  const handleComposeReply = (text) => {
+      setDraftMessage(text);
+      setActiveTab('desk');
+      addLog(`AUTO-COUNSEL: Draft Response Generated`, 'CORE', 'success');
+  };
+
+  const handleTopUp = () => {
+      if (isPurseLocked) { alert("Wallet Locked"); return; }
+      const amount = 100.00;
+      setBalance(prev => prev + amount);
+      const newTx = { id: Date.now(), type: 'deposit', amount: amount, date: 'Just now', desc: 'Top Up (USDB)' };
+      setTransactions(prev => [newTx, ...prev]);
+      triggerHaptic(50);
+      addLog(`EPURSE: Deposit ${amount} USDB`, 'CORE', 'success');
+  };
+
+  const handleWithdraw = () => {
+      if (isPurseLocked) { alert("Wallet Locked"); return; }
+      if (balance <= 0) return;
+      const amount = 50.00;
+      if (balance < amount) return;
+      setBalance(prev => prev - amount);
+      const newTx = { id: Date.now(), type: 'withdraw', amount: -amount, date: 'Just now', desc: 'Withdraw to External' };
+      setTransactions(prev => [newTx, ...prev]);
+      triggerHaptic(50);
+      addLog(`EPURSE: Withdraw ${amount} USDB`, 'CORE', 'warning');
+  };
+  
+  const handlePayout = () => {
+      if (isPurseLocked) { alert("Wallet Locked"); return; }
+      const earnings = 124.50; // Mock earnings from dashboard
+      setBalance(prev => prev - earnings); // In this demo, earnings are simulated as already in balance, but we'll show a payout action
+      // In a real app, earnings would be a separate ledger entry that transfers TO balance or OUT to wallet.
+      // Here we simulate withdrawing SPECIFICALLY the creator earnings.
+      const newTx = { id: Date.now(), type: 'payout', amount: -earnings, date: 'Just now', desc: 'Creator Payout' };
+      setTransactions(prev => [newTx, ...prev]);
+      triggerHaptic(50);
+      addLog(`EPURSE: Creator Payout $${earnings} USDB to Cold Wallet`, 'CORE', 'success');
+  };
+
+  const togglePro = () => {
+      if (!isPro) {
+          if (balance >= SUB_PRICE) {
+              setBalance(prev => prev - SUB_PRICE);
+              const newTx = { id: Date.now(), type: 'subscription', amount: -SUB_PRICE, date: 'Just now', desc: 'Pro Membership' };
+              setTransactions(prev => [newTx, ...prev]);
+              setIsPro(true);
+          }
+      } else {
+          setIsPro(false);
+      }
+  };
+
+  const handleSendMail = ({ type, recipient, stampUniqueId, docType, isGeofenced, gpsCoordinates }) => {
+      // HYBRID LEDGER SIMULATION & VALUE SCRIPT LOGIC
+      
+      // 1. Initial Lock (Ring)
+      addLog(`ESCROW: Locking Stamp ID ${stampUniqueId} on Public Ledger`, 'RING');
+
+      // 2. Value Script Execution (Based on Doc Type & Features)
+      if (isGeofenced) {
+          addLog(`SCRIPT [Secret]: Splitting Decryption Key (Shamir's Secret Sharing)...`, 'CORE');
+          setTimeout(() => addLog(`SCRIPT [Secret]: Geofence Hash Registered on Chain`, 'RING', 'success'), 800);
+          setTimeout(() => addLog(`SCRIPT [Secret]: Burn-on-Read Timer Armed`, 'CORE', 'error'), 1600);
+      } else if (docType === 'Legal') {
+          addLog(`SCRIPT [Legal]: Generating Timestamp Anchor...`, 'RING');
+          setTimeout(() => addLog(`SCRIPT [Legal]: Verifying Sender Identity via Oracle...`, 'CORE', 'success'), 500);
+          setTimeout(() => addLog(`SCRIPT [Legal]: Chain of Custody Token Minted`, 'RING', 'success'), 1200);
+      } else if (docType === 'Financial') {
+          addLog(`SCRIPT [Financial]: Wrapping Asset as RingMint Bearer Instrument...`, 'RING');
+          setTimeout(() => addLog(`SCRIPT [Financial]: Initializing Atomic Swap Escrow`, 'CORE', 'success'), 800);
+      } else if (docType === 'Medical') {
+          addLog(`SCRIPT [Medical]: Encrypting Payload (AES-256)...`, 'CORE');
+          setTimeout(() => addLog(`SCRIPT [Medical]: Generating Zero-Knowledge Proof...`, 'RING', 'success'), 800);
+      }
+
+      setUserStamps(prev => prev.map(s => {
+          if (s.uniqueId === stampUniqueId) {
+              return { 
+                  ...s, 
+                  status: isGeofenced ? 'geofenced' : 'locked', 
+                  trackingHash: generateHash(), 
+                  destination: recipient, 
+                  lockedAt: Date.now(),
+                  targetGps: isGeofenced ? gpsCoordinates : null
+                };
+          }
+          return s;
+      }));
+  };
+
+  return (
+    <div className={`flex ${isMobileMode ? 'flex-col' : 'flex-row'} h-screen bg-slate-950 font-sans text-slate-200 overflow-hidden select-none`}>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes bounceShort { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+        .animate-scale-up { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .animate-bounce-short { animation: bounceShort 1.5s infinite; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
+      {isMobileMode ? (
+          <MobileHeader isPro={isPro} balance={balance} onOpenLogs={() => setShowLogs(!showLogs)} isPurseLocked={isPurseLocked} />
+      ) : (
+          <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={pendingCount} />
+      )}
+      
+      <main className={`flex-1 overflow-y-auto overscroll-contain relative bg-slate-950 ${isMobileMode ? '' : 'p-8'}`}>
+        <div className={isMobileMode ? '' : 'max-w-7xl mx-auto'}>
+            {/* Header for Desktop Web Mode */}
+            {!isMobileMode && (
+                <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-6">
+                    <h2 className="text-2xl font-bold text-slate-100 capitalize">{activeTab} Dashboard</h2>
+                    <div className="flex items-center gap-4">
+                        <div className="px-4 py-2 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Balance</span>
+                            <span className="text-lg font-mono font-bold text-emerald-400">${balance.toFixed(2)}</span>
+                        </div>
+                        <button onClick={() => setShowLogs(!showLogs)} className="p-2 bg-slate-900 rounded-xl border border-slate-800 hover:text-white text-slate-400"><Terminal className="w-5 h-5" /></button>
+                        {isPurseLocked && <Lock className="w-5 h-5 text-red-500" />}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'market' && <MarketView inventory={inventory} onBuy={handleBuy} balance={balance} isPro={isPro} isMobileMode={isMobileMode} />}
+            {activeTab === 'vault' && <EPurseView userStamps={userStamps} balance={balance} onUnlockGeofence={handleUnlockGeofence} transactions={transactions} onTopUp={handleTopUp} onWithdraw={handleWithdraw} onPayout={handlePayout} isLocked={isPurseLocked} setIsLocked={setIsPurseLocked} isMobileMode={isMobileMode} />}
+            {activeTab === 'desk' && <MailDesk userStamps={userStamps} onSendMail={handleSendMail} isPro={isPro} initialMessage={draftMessage} clearInitialMessage={() => setDraftMessage("")} isPurseLocked={isPurseLocked} isMobileMode={isMobileMode} />}
+            {activeTab === 'mailbox' && <MailboxView isPro={isPro} onComposeReply={handleComposeReply} isMobileMode={isMobileMode} />}
+            {activeTab === 'services' && <ServicesView setActiveTab={setActiveTab} isPro={isPro} isMobileMode={isMobileMode} />}
+            {activeTab === 'creator' && <CreatorStudio onAddStamp={handleAddAiStamp} balance={balance} isMobileMode={isMobileMode} />}
+            {activeTab === 'profile' && <ProfileView isPro={isPro} togglePro={togglePro} isMobileMode={isMobileMode} />}
+            
+            {showLogs && <GlassBoxLog logs={sysLogs} onClose={() => setShowLogs(false)} />}
+        </div>
+      </main>
+
+      {/* Format Toggle */}
+      <div className="fixed bottom-6 right-6 z-[100] flex gap-2">
+          <button 
+            onClick={() => setIsMobileMode(true)}
+            className={`p-3 rounded-full shadow-xl border-2 transition-all ${isMobileMode ? 'bg-amber-500 border-amber-400 text-slate-950 scale-110' : 'bg-slate-900 border-slate-800 text-slate-500'}`}
+          >
+              <Smartphone className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={() => setIsMobileMode(false)}
+            className={`p-3 rounded-full shadow-xl border-2 transition-all ${!isMobileMode ? 'bg-amber-500 border-amber-400 text-slate-950 scale-110' : 'bg-slate-900 border-slate-800 text-slate-500'}`}
+          >
+              <Monitor className="w-5 h-5" />
+          </button>
+      </div>
+
+      {isMobileMode && <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={pendingCount} />}
+    </div>
+  );
+};
+
+export default App;
+
+
